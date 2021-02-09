@@ -37,7 +37,7 @@ function createRemoteStrings(auth, hostname) {
   hostname = hostname || 'github.com';
 
   this.remoteString = 'https://' + authString + hostname + '/';
-  this.authSuffix = auth.token ? '?access_token=' + auth.token : '';
+  this.authSuffix = auth.token ? 'token ' + auth.token : '';
 
   if (hostname == 'github.com')
     this.apiRemoteString = 'https://' + authString + 'api.github.com/';
@@ -89,6 +89,8 @@ function readNetrc(hostname) {
 }
 
 function isGithubToken(token) {
+  console.log('github.js 92:  token', token);
+
   return token && token.match(/[0-9a-f]{40}/);
 }
 
@@ -231,10 +233,11 @@ function configureCredentials(config, ui) {
       createRemoteStrings.call(remotes, auth, config.hostname);
 
       return asp(request)({
-        uri: remotes.apiRemoteString + 'user' + remotes.authSuffix,
+        uri: remotes.apiRemoteString + 'user',
         headers: {
           'User-Agent': 'jspm',
-          'Accept': 'application/vnd.github.v3+json'
+          'Accept': 'application/vnd.github.v3+json',
+          'Authorization': 'token ' + remotes.authSuffix
         },
         followRedirect: false,
         strictSSL: 'strictSSL' in config ? config.strictSSL : true
@@ -273,6 +276,8 @@ function configureCredentials(config, ui) {
 }
 
 function checkRateLimit(headers) {
+  console.log('github.js 276:  headers', headers);
+
   if (headers.status.match(/^401/))
     throw 'Unauthorized response for GitHub API.\n' +
       'Use %jspm registry config github% to reconfigure the credentials, or update them in your ~/.netrc file.';
@@ -345,9 +350,10 @@ GithubLocation.prototype = {
     // request the repo to check that it isn't a redirect
     return new Promise(function(resolve, reject) {
       request(extend({
-        uri: remoteString + repo + authSuffix,
+        uri: remoteString + repo,
         headers: {
-          'User-Agent': 'jspm'
+          'User-Agent': 'jspm',
+          'Authorization': 'token ' + authSuffix
         },
         followRedirect: false
       }, self.defaultRequestOptions
@@ -443,10 +449,11 @@ GithubLocation.prototype = {
       version = 'v' + version;
 
     return asp(request)(extend({
-      uri: this.apiRemoteString + 'repos/' + repo + '/contents/package.json' + this.authSuffix,
+      uri: this.apiRemoteString + 'repos/' + repo + '/contents/package.json',
       headers: {
         'User-Agent': 'jspm',
-        'Accept': 'application/vnd.github.v3.raw'
+        'Accept': 'application/vnd.github.v3.raw',
+        'Authorization': 'token ' + this.authSuffix
       },
       qs: {
         ref: version
@@ -651,10 +658,11 @@ GithubLocation.prototype = {
 
         // now that the inPipe is ready, do the request
         request(extend({
-          uri: release.url + authSuffix,
+          uri: release.url,
           headers: {
             'accept': 'application/octet-stream',
-            'user-agent': 'jspm'
+            'user-agent': 'jspm',
+            'Authorization': 'token ' + authSuffix
           },
           followRedirect: false,
         }, self.defaultRequestOptions
@@ -670,7 +678,8 @@ GithubLocation.prototype = {
             uri: archiveRes.headers.location,
             headers: {
               'accept': 'application/octet-stream',
-              'user-agent': 'jspm'
+              'user-agent': 'jspm',
+              'Authorization': 'token ' + authSuffix
             }
           }, self.defaultRequestOptions
           ))
@@ -700,9 +709,10 @@ GithubLocation.prototype = {
       // Download from the git archive
       return new Promise(function(resolve, reject) {
         request(extend({
-          uri: remoteString + repo + '/archive/' + version + '.tar.gz' + authSuffix,
+          uri: remoteString + repo + '/archive/' + version + '.tar.gz',
           headers: {
-            'accept': 'application/octet-stream'
+            'accept': 'application/octet-stream',
+            'Authorization': 'token ' + authSuffix
           },
         }, self.defaultRequestOptions
         ))
@@ -738,12 +748,15 @@ GithubLocation.prototype = {
   },
 
   checkReleases: function(repo, version) {
+    console.log('github.js 746:  this.authSuffix', this.authSuffix);
+
     // NB cache this on disk with etags
     var reqOptions = extend({
-      uri: this.apiRemoteString + 'repos/' + repo + '/releases' + this.authSuffix,
+      uri: this.apiRemoteString + 'repos/' + repo + '/releases',
       headers: {
         'User-Agent': 'jspm',
-        'Accept': 'application/vnd.github.v3+json'
+        'Accept': 'application/vnd.github.v3+json',
+        'Authorization': 'token ' + this.authSuffix
       },
       followRedirect: false
     }, this.defaultRequestOptions);
